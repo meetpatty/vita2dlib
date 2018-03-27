@@ -842,6 +842,97 @@ void vita2d_pool_reset()
 	pool_index = 0;
 }
 
+vita2d_shader *vita2d_create_shader_untextured(const SceGxmProgram* vertexProgramGxp, const SceGxmProgram* fragmentProgramGxp)
+{
+	int err;
+	UNUSED(err);
+
+	vita2d_shader *shader = malloc(sizeof(*shader));
+
+	err = sceGxmProgramCheck(vertexProgramGxp);
+	DEBUG("texture_v sceGxmProgramCheck(): 0x%08X\n", err);
+	err = sceGxmProgramCheck(fragmentProgramGxp);
+	DEBUG("texture_f sceGxmProgramCheck(): 0x%08X\n", err);
+
+	err = sceGxmShaderPatcherRegisterProgram(shaderPatcher, vertexProgramGxp, &shader->vertexProgramId);
+	DEBUG("texture_v sceGxmShaderPatcherRegisterProgram(): 0x%08X\n", err);
+	err = sceGxmShaderPatcherRegisterProgram(shaderPatcher, fragmentProgramGxp, &shader->fragmentProgramId);
+	DEBUG("texture_f sceGxmShaderPatcherRegisterProgram(): 0x%08X\n", err);
+
+	shader->paramPositionAttribute = sceGxmProgramFindParameterByName(vertexProgramGxp, "aPosition");
+	DEBUG("aPosition sceGxmProgramFindParameterByName(): %p\n", shader->paramPositionAttribute);
+
+	// create texture vertex format
+	SceGxmVertexAttribute textureVertexAttributes[2];
+	SceGxmVertexStream textureVertexStreams[1];
+	/* x,y,z: 3 float 32 bits */
+	textureVertexAttributes[0].streamIndex = 0;
+	textureVertexAttributes[0].offset = 0;
+	textureVertexAttributes[0].format = SCE_GXM_ATTRIBUTE_FORMAT_F32;
+	textureVertexAttributes[0].componentCount = 3; // (x, y, z)
+	textureVertexAttributes[0].regIndex = sceGxmProgramParameterGetResourceIndex(shader->paramPositionAttribute);
+	// 16 bit (short) indices
+	textureVertexStreams[0].stride = sizeof(float) * 3;
+	textureVertexStreams[0].indexSource = SCE_GXM_INDEX_SOURCE_INDEX_16BIT;
+
+	// create texture shaders
+	err = sceGxmShaderPatcherCreateVertexProgram(
+	  shaderPatcher,
+	  shader->vertexProgramId,
+	  textureVertexAttributes,
+	  1,
+	  textureVertexStreams,
+	  1,
+	  &shader->vertexProgram);
+
+	DEBUG("texture sceGxmShaderPatcherCreateVertexProgram(): 0x%08X\n", err);
+
+	// Fill SceGxmBlendInfo
+	static const SceGxmBlendInfo blend_info = {
+		.colorFunc = SCE_GXM_BLEND_FUNC_ADD,
+		.alphaFunc = SCE_GXM_BLEND_FUNC_ADD,
+		.colorSrc  = SCE_GXM_BLEND_FACTOR_SRC_ALPHA,
+		.colorDst  = SCE_GXM_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+		.alphaSrc  = SCE_GXM_BLEND_FACTOR_ONE,
+		.alphaDst  = SCE_GXM_BLEND_FACTOR_ZERO,
+		.colorMask = SCE_GXM_COLOR_MASK_ALL
+	};
+
+	err = sceGxmShaderPatcherCreateFragmentProgram(
+	  shaderPatcher,
+	  shader->fragmentProgramId,
+	  SCE_GXM_OUTPUT_REGISTER_FORMAT_UCHAR4,
+	  MSAA_MODE,
+	  &blend_info,
+	  vertexProgramGxp,
+	  &shader->fragmentProgram);
+
+	DEBUG("texture sceGxmShaderPatcherCreateFragmentProgram(): 0x%08X\n", err);
+
+	shader->wvpParam = sceGxmProgramFindParameterByName(vertexProgramGxp, "wvp");
+	DEBUG("texture wvp sceGxmProgramFindParameterByName(): %p\n", shader->wvpParam);
+
+	shader->vertexInput.texture_size = sceGxmProgramFindParameterByName(vertexProgramGxp, "IN.texture_size");
+	DEBUG("texture size sceGxmProgramFindParameterByName(): %p\n", shader->vertexInput.texture_size);
+	
+	shader->vertexInput.output_size = sceGxmProgramFindParameterByName(vertexProgramGxp, "IN.output_size");
+	DEBUG("texture size sceGxmProgramFindParameterByName(): %p\n", shader->vertexInput.output_size);
+	
+	shader->vertexInput.video_size = sceGxmProgramFindParameterByName(vertexProgramGxp, "IN.video_size");
+	DEBUG("texture size sceGxmProgramFindParameterByName(): %p\n", shader->vertexInput.video_size);
+
+	shader->fragmentInput.texture_size = sceGxmProgramFindParameterByName(fragmentProgramGxp, "IN.texture_size");
+	DEBUG("texture size sceGxmProgramFindParameterByName(): %p\n", shader->fragmentInput.texture_size);
+	
+	shader->fragmentInput.output_size = sceGxmProgramFindParameterByName(fragmentProgramGxp, "IN.output_size");
+	DEBUG("texture size sceGxmProgramFindParameterByName(): %p\n", shader->fragmentInput.output_size);
+	
+	shader->fragmentInput.video_size = sceGxmProgramFindParameterByName(fragmentProgramGxp, "IN.video_size");
+	DEBUG("texture size sceGxmProgramFindParameterByName(): %p\n", shader->fragmentInput.video_size);
+	
+	return shader;
+}
+
 vita2d_shader *vita2d_create_shader(const SceGxmProgram* vertexProgramGxp, const SceGxmProgram* fragmentProgramGxp)
 {
 	int err;
