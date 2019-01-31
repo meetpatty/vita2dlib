@@ -25,7 +25,6 @@
 #define DISPLAY_PIXEL_FORMAT		SCE_DISPLAY_PIXELFORMAT_A8B8G8R8
 #define DISPLAY_BUFFER_COUNT		3
 #define DISPLAY_MAX_PENDING_SWAPS	2
-#define MSAA_MODE			SCE_GXM_MULTISAMPLE_NONE
 #define DEFAULT_TEMP_POOL_SIZE		(1 * 1024 * 1024)
 
 typedef struct vita2d_display_data {
@@ -154,12 +153,7 @@ static void display_callback(const void *callback_data)
 	}
 }
 
-int vita2d_init()
-{
-	return vita2d_init_advanced(DEFAULT_TEMP_POOL_SIZE);
-}
-
-int vita2d_init_advanced(unsigned int temp_pool_size)
+static int vita2d_init_internal(unsigned int temp_pool_size, SceGxmMultisampleMode msaa)
 {
 	int err;
 	unsigned int i, x, y;
@@ -232,7 +226,7 @@ int vita2d_init_advanced(unsigned int temp_pool_size)
 	renderTargetParams.width			= DISPLAY_WIDTH;
 	renderTargetParams.height			= DISPLAY_HEIGHT;
 	renderTargetParams.scenesPerFrame		= 1;
-	renderTargetParams.multisampleMode		= MSAA_MODE;
+	renderTargetParams.multisampleMode		= msaa;
 	renderTargetParams.multisampleLocations		= 0;
 	renderTargetParams.driverMemBlock		= -1; // Invalid UID
 
@@ -263,7 +257,7 @@ int vita2d_init_advanced(unsigned int temp_pool_size)
 			&displaySurface[i],
 			DISPLAY_COLOR_FORMAT,
 			SCE_GXM_COLOR_SURFACE_LINEAR,
-			(MSAA_MODE == SCE_GXM_MULTISAMPLE_NONE) ? SCE_GXM_COLOR_SURFACE_SCALE_NONE : SCE_GXM_COLOR_SURFACE_SCALE_MSAA_DOWNSCALE,
+			(msaa == SCE_GXM_MULTISAMPLE_NONE) ? SCE_GXM_COLOR_SURFACE_SCALE_NONE : SCE_GXM_COLOR_SURFACE_SCALE_MSAA_DOWNSCALE,
 			SCE_GXM_OUTPUT_REGISTER_SIZE_32BIT,
 			DISPLAY_WIDTH,
 			DISPLAY_HEIGHT,
@@ -279,11 +273,11 @@ int vita2d_init_advanced(unsigned int temp_pool_size)
 	const unsigned int alignedHeight = ALIGN(DISPLAY_HEIGHT, SCE_GXM_TILE_SIZEY);
 	unsigned int sampleCount = alignedWidth*alignedHeight;
 	unsigned int depthStrideInSamples = alignedWidth;
-	if (MSAA_MODE == SCE_GXM_MULTISAMPLE_4X) {
+	if (msaa == SCE_GXM_MULTISAMPLE_4X) {
 		// samples increase in X and Y
 		sampleCount *= 4;
 		depthStrideInSamples *= 2;
-	} else if (MSAA_MODE == SCE_GXM_MULTISAMPLE_2X) {
+	} else if (msaa == SCE_GXM_MULTISAMPLE_2X) {
 		// samples increase in Y only
 		sampleCount *= 2;
 	}
@@ -433,7 +427,7 @@ int vita2d_init_advanced(unsigned int temp_pool_size)
 		shaderPatcher,
 		clearFragmentProgramId,
 		SCE_GXM_OUTPUT_REGISTER_FORMAT_UCHAR4,
-		MSAA_MODE,
+		msaa,
 		NULL,
 		clearVertexProgramGxp,
 		&clearFragmentProgram);
@@ -507,7 +501,7 @@ int vita2d_init_advanced(unsigned int temp_pool_size)
 		shaderPatcher,
 		colorFragmentProgramId,
 		SCE_GXM_OUTPUT_REGISTER_FORMAT_UCHAR4,
-		MSAA_MODE,
+		msaa,
 		&blend_info,
 		colorVertexProgramGxp,
 		&_vita2d_colorFragmentProgram);
@@ -556,7 +550,7 @@ int vita2d_init_advanced(unsigned int temp_pool_size)
 		shaderPatcher,
 		textureFragmentProgramId,
 		SCE_GXM_OUTPUT_REGISTER_FORMAT_UCHAR4,
-		MSAA_MODE,
+		msaa,
 		&blend_info,
 		textureVertexProgramGxp,
 		&_vita2d_textureFragmentProgram);
@@ -567,7 +561,7 @@ int vita2d_init_advanced(unsigned int temp_pool_size)
 		shaderPatcher,
 		textureTintFragmentProgramId,
 		SCE_GXM_OUTPUT_REGISTER_FORMAT_UCHAR4,
-		MSAA_MODE,
+		msaa,
 		&blend_info,
 		textureVertexProgramGxp,
 		&_vita2d_textureTintFragmentProgram);
@@ -612,6 +606,21 @@ int vita2d_init_advanced(unsigned int temp_pool_size)
 
 	vita2d_initialized = 1;
 	return 1;
+}
+
+int vita2d_init()
+{
+	return vita2d_init_internal(DEFAULT_TEMP_POOL_SIZE, SCE_GXM_MULTISAMPLE_NONE);
+}
+
+int vita2d_init_advanced(unsigned int temp_pool_size)
+{
+	return vita2d_init_internal(temp_pool_size, SCE_GXM_MULTISAMPLE_NONE);
+}
+
+int vita2d_init_advanced_with_msaa(unsigned int temp_pool_size, SceGxmMultisampleMode msaa)
+{
+	return vita2d_init_internal(temp_pool_size, msaa);
 }
 
 void vita2d_wait_rendering_done()
@@ -902,7 +911,7 @@ vita2d_shader *vita2d_create_shader_untextured(const SceGxmProgram* vertexProgra
 	  shaderPatcher,
 	  shader->fragmentProgramId,
 	  SCE_GXM_OUTPUT_REGISTER_FORMAT_UCHAR4,
-	  MSAA_MODE,
+	  msaa,
 	  &blend_info,
 	  vertexProgramGxp,
 	  &shader->fragmentProgram);
@@ -1002,7 +1011,7 @@ vita2d_shader *vita2d_create_shader(const SceGxmProgram* vertexProgramGxp, const
 	  shaderPatcher,
 	  shader->fragmentProgramId,
 	  SCE_GXM_OUTPUT_REGISTER_FORMAT_UCHAR4,
-	  MSAA_MODE,
+	  msaa,
 	  &blend_info,
 	  vertexProgramGxp,
 	  &shader->fragmentProgram);

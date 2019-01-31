@@ -81,6 +81,7 @@ typedef enum vita2d_start_drawing_flags {
 
 int vita2d_init();
 int vita2d_init_advanced(unsigned int temp_pool_size);
+int vita2d_init_advanced_with_msaa(unsigned int temp_pool_size, SceGxmMultisampleMode msaa);
 void vita2d_wait_rendering_done();
 int vita2d_fini();
 
