@@ -116,6 +116,8 @@ SceGxmProgramParameter *_vita2d_selectedTexWvpParam = NULL;
 SceGxmProgramParameter *_vita2d_selectedVertexInput = NULL;
 SceGxmProgramParameter *_vita2d_selectedFragmentInput = NULL;
 
+static SceGxmMultisampleMode msaa_mode = SCE_GXM_MULTISAMPLE_NONE;
+
 // Temporary memory pool
 static void *pool_addr = NULL;
 static SceUID poolUid;
@@ -158,7 +160,7 @@ static int vita2d_init_internal(unsigned int temp_pool_size, SceGxmMultisampleMo
 	int err;
 	unsigned int i, x, y;
 	UNUSED(err);
-
+	
 	if (vita2d_initialized) {
 		DEBUG("libvita2d is already initialized!\n");
 		return 1;
@@ -603,7 +605,8 @@ static int vita2d_init_internal(unsigned int temp_pool_size, SceGxmMultisampleMo
 
 	if (pgf_module_was_loaded != SCE_SYSMODULE_LOADED)
 		sceSysmoduleLoadModule(SCE_SYSMODULE_PGF);
-
+	
+	msaa_mode = msaa;
 	vita2d_initialized = 1;
 	return 1;
 }
@@ -911,7 +914,7 @@ vita2d_shader *vita2d_create_shader_untextured(const SceGxmProgram* vertexProgra
 	  shaderPatcher,
 	  shader->fragmentProgramId,
 	  SCE_GXM_OUTPUT_REGISTER_FORMAT_UCHAR4,
-	  msaa,
+	  msaa_mode,
 	  &blend_info,
 	  vertexProgramGxp,
 	  &shader->fragmentProgram);
@@ -1011,7 +1014,7 @@ vita2d_shader *vita2d_create_shader(const SceGxmProgram* vertexProgramGxp, const
 	  shaderPatcher,
 	  shader->fragmentProgramId,
 	  SCE_GXM_OUTPUT_REGISTER_FORMAT_UCHAR4,
-	  msaa,
+	  msaa_mode,
 	  &blend_info,
 	  vertexProgramGxp,
 	  &shader->fragmentProgram);
