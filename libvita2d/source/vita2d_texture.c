@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-#include "vita2d.h"
+#include "vita2d-fbo.h"
 #include "utils.h"
 #include "shared.h"
 

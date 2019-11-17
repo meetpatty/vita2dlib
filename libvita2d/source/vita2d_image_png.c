@@ -3,7 +3,7 @@
 #include <psp2/io/fcntl.h>
 #include <psp2/gxm.h>
 #include <png.h>
-#include "vita2d.h"
+#include "vita2d-fbo.h"
 
 #define PNG_SIGSIZE (8)
 

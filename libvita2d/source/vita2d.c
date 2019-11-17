@@ -6,7 +6,7 @@
 #include <psp2/sysmodule.h>
 #include <string.h>
 #include <stdlib.h>
-#include "vita2d.h"
+#include "vita2d-fbo.h"
 #include "utils.h"
 
 #ifdef DEBUG_BUILD
